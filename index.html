@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Misión Antártida</title>
+    <style>
+        body { font-family: 'Comic Sans MS', sans-serif; background-color: #e0f7ff; text-align: center; margin: 0; }
+        #pantalla-inicio { padding: 50px; }
+        .boton { padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; border-radius: 12px; border: none; color: white; }
+        .btn-1 { background: #4CAF50; } .btn-2 { background: #FF9800; } .btn-3 { background: #2196F3; }
+
+        #juego { display: none; padding: 10px; }
+        
+        /* Contenedor Pirámide */
+        .area-piramide { 
+            position: relative; width: 600px; height: 500px; 
+            margin: 0 auto; background-image: url('img/imagen_piramide.jpeg'); 
+            background-size: contain; background-repeat: no-repeat; background-position: center;
+        }
+
+        /* Ajuste de huecos según tu imagen */
+        .hueco { position: absolute; width: 100px; height: 60px; border: 1px dashed rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; }
+        #zona-orca { top: 75px; left: 250px; }
+        #zona-foca { top: 145px; left: 250px; }
+        #zona-pinguinos { top: 215px; left: 250px; }
+        #zona-peces { top: 285px; left: 250px; }
+        #zona-krill { top: 355px; left: 250px; }
+        #zona-alga { top: 425px; left: 250px; }
+
+        /* Zona de piezas inferior */
+        .zona-piezas { 
+            width: 540px; min-height: 63px; margin: 20px auto; 
+            border: 2px dashed #999; border-radius: 15px; 
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 15px; background: white;
+        }
+        .animal { width: 80px; height: 60px; cursor: grab; object-fit: cover; border-radius: 5px; }
+
+        /* Modal de Ayuda */
+        #modal-ayuda { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8); z-index: 1000; cursor: pointer;
+            align-items: center; justify-content: center;
+        }
+        #modal-ayuda img { max-width: 80%; border: 5px solid white; border-radius: 10px; }
+
+        .acierto { border: 3px solid #4CAF50 !important; }
+        .error-anim { animation: shake 0.3s; border: 2px solid red; }
+        @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
+        .input-nombre::placeholder { color: #000000; opacity: 1; font-style: italic; font-weight: bold; }
+        .input-nombre { width: 80%; font-size: 12px; text-align: center; background: transparent; border: none; outline: none; color: #000000; font-style: italic; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="pantalla-inicio">
+        <h1>🧊 ¡Misión Antarctida!</h1>
+        <p>Reconstruye la pirámide trófica antes de que se hunda su ecosistema.</p>
+
+        <button class="boton btn-1" onclick="comenzar(1)">Nivel 1</button>
+        <button class="boton btn-2" onclick="comenzar(2)">Nivel 2</button>
+        <button class="boton btn-3" onclick="comenzar(3)">Nivel 3</button>
+    </div>
+
+    <div id="juego">
+        <div>
+            <button onclick="location.reload()">🏠 Inicio</button>
+            <button onclick="abrirAyuda()">💡 Ayuda</button>
+        </div>
+        <div class="area-piramide" id="piramide">
+            <div class="hueco" id="zona-orca" ondrop="drop(event)" ondragover="allowDrop(event)" data-target="orca"></div>
+            <div class="hueco" id="zona-foca" ondrop="drop(event)" ondragover="allowDrop(event)" data-target="foca"></div>
+            <div class="hueco" id="zona-pinguinos" ondrop="drop(event)" ondragover="allowDrop(event)" data-target="pinguinos"></div>
+            <div class="hueco" id="zona-peces" ondrop="drop(event)" ondragover="allowDrop(event)" data-target="peces"></div>
+            <div class="hueco" id="zona-krill" ondrop="drop(event)" ondragover="allowDrop(event)" data-target="krill"></div>
+            <div class="hueco" id="zona-alga" ondrop="drop(event)" ondragover="allowDrop(event)" data-target="alga"></div>
+        </div>
+        <div class="zona-piezas" id="piezas"></div>
+    </div>
+
+    <div id="modal-ayuda" onclick="this.style.display='none'">
+        <img src="img/imagen_ayuda.jpeg" alt="Ayuda">
+    </div>
+
+    <script>
+        const animales = ['orca', 'foca', 'pinguinos', 'peces', 'krill', 'alga'];
+        let nivelActual = 1;
+        let piezaTocada = null; // Variable para el movimiento táctil
+
+        function comenzar(n) {
+            nivelActual = n;
+            document.getElementById('pantalla-inicio').style.display = 'none';
+            document.getElementById('juego').style.display = 'block';
+            cargarJuego();
+        }
+
+        function cargarJuego() {
+            const piezasDiv = document.getElementById('piezas');
+            piezasDiv.innerHTML = "";
+            const mezcla = [...animales].sort(() => Math.random() - 0.5);
+
+            mezcla.forEach(id => {
+                const img = document.createElement('img');
+                img.id = id;
+                img.className = 'animal';
+                
+                if (nivelActual === 2) {
+                    img.src = `img/imagen_${id}_borrosa.jpeg`;
+                } else {
+                    img.src = `img/imagen_${id}.jpeg`;
+                }
+
+                if (nivelActual === 3) {
+                    configurarNivel3(id);
+                } else {
+                    img.draggable = true;
+                    img.ondragstart = drag;
+                    
+                    // EVENTOS TÁCTILES PARA MÓVIL
+                    img.addEventListener('touchstart', touchStart, {passive: false});
+                    img.addEventListener('touchmove', touchMove, {passive: false});
+                    img.addEventListener('touchend', touchEnd, {passive: false});
+                }
+                
+                img.onclick = () => reproducir(id);
+                piezasDiv.appendChild(img);
+            });
+        }
+
+        // --- LÓGICA PARA MÓVIL (TOUCH) ---
+
+        function touchStart(e) {
+            piezaTocada = e.target;
+            piezaTocada.style.position = "fixed";
+            piezaTocada.style.zIndex = "1000";
+            piezaTocada.style.pointerEvents = "none"; // Permite detectar lo que hay debajo (el hueco)
+        }
+
+        function touchMove(e) {
+            if (!piezaTocada) return;
+            e.preventDefault(); // Evita el scroll mientras mueves al animal
+            let touch = e.touches[0];
+            // Centramos la imagen bajo el dedo
+            piezaTocada.style.left = (touch.clientX - 40) + "px";
+            piezaTocada.style.top = (touch.clientY - 30) + "px";
+        }
+
+        function touchEnd(e) {
+            if (!piezaTocada) return;
+            let el = piezaTocada;
+            piezaTocada = null;
+            
+            // Detectamos qué elemento hay en la posición donde soltamos
+            let touch = e.changedTouches[0];
+            let debajo = document.elementFromPoint(touch.clientX, touch.clientY);
+            let destino = debajo ? debajo.closest('.hueco') : null;
+
+            validarColocacion(el, destino);
+            
+            // Devolvemos el estilo para que no flote
+            el.style.position = "static";
+            el.style.pointerEvents = "auto";
+        }
+
+        // --- LÓGICA PARA PC (MOUSE) ---
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const id = ev.dataTransfer.getData("text");
+            const pieza = document.getElementById(id);
+            const destino = ev.target.closest('.hueco');
+            validarColocacion(pieza, destino);
+        }
+
+        function allowDrop(ev) { ev.preventDefault(); }
+
+        // --- FUNCIÓN UNIFICADA DE VALIDACIÓN ---
+
+        function validarColocacion(pieza, destino) {
+            if (destino && destino.getAttribute('data-target') === pieza.id) {
+                destino.appendChild(pieza);
+                destino.classList.add('acierto');
+                if (nivelActual === 2) pieza.src = `img/imagen_${pieza.id}.jpeg`;
+                pieza.style.width = "100%"; 
+                pieza.style.height = "100%";
+                reproducir('acierto');
+                setTimeout(() => reproducir(pieza.id), 500);
+            } else {
+                // Si falla o se suelta fuera, vuelve a la caja de piezas
+                document.getElementById('piezas').appendChild(pieza);
+                pieza.classList.add('error-anim');
+                reproducir('error');
+                setTimeout(() => pieza.classList.remove('error-anim'), 500);
+            }
+        }
+
+        // --- NIVEL 3 Y AYUDA ---
+
+        function configurarNivel3(id) {
+            const zona = document.getElementById(`zona-${id}`);
+            zona.innerHTML = `<input type="text" class="input-nombre" placeholder="Nombre..." onchange="validarNombre(this, '${id}')">`;
+        }
+
+        function validarNombre(input, id) {
+            let textoUsuario = input.value.toLowerCase().trim();
+            let textoLimpio = textoUsuario.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            let palabraClave = (id === 'pinguinos') ? 'pinguin' : id;
+
+            if (textoLimpio.includes(palabraClave)) {
+                input.parentElement.classList.add('acierto');
+                input.disabled = true;
+                input.style.color = "#2e7d32";
+                reproducir('acierto');
+                reproducir(id); 
+            } else {
+                input.classList.add('error-anim');
+                reproducir('error');
+                setTimeout(() => { input.value = ""; input.classList.remove('error-anim'); }, 500);
+            }
+        }
+
+        function abrirAyuda() { document.getElementById('modal-ayuda').style.display = 'flex'; }
+        function reproducir(s) { new Audio(`audio/${s}.mp3`).play().catch(() => {}); }
+    </script>
