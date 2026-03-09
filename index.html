@@ -1,71 +1,86 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Misión Antártida</title>
     <style>
-        body { font-family: 'Comic Sans MS', sans-serif; background-color: #e0f7ff; text-align: center; margin: 0; }
-        #pantalla-inicio { padding: 50px; }
-        .boton { padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; border-radius: 12px; border: none; color: white; }
+        body { font-family: 'Comic Sans MS', sans-serif; background-color: #e0f7ff; text-align: center; margin: 0; padding: 10px; }
+        #pantalla-inicio { padding: 50px 20px; }
+        .boton { padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; border-radius: 12px; border: none; color: white; width: 80%; max-width: 300px; }
         .btn-1 { background: #4CAF50; } .btn-2 { background: #FF9800; } .btn-3 { background: #2196F3; }
+        #juego { display: none; }
+        .controles-superiores { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+        .btn-control { padding: 10px 20px; border-radius: 8px; border: 1px solid #ccc; cursor: pointer; background: white; }
 
-        #juego { display: none; padding: 10px; }
-        
-        /* Contenedor Pirámide */
         .area-piramide { 
-            position: relative; width: 600px; height: 500px; 
-            margin: 0 auto; background-image: url('img/imagen_piramide.jpeg'); 
+            position: relative; width: 100%; max-width: 600px; 
+            aspect-ratio: 600 / 500; margin: 0 auto; 
+            background-image: url('img/imagen_piramide.jpeg'); 
             background-size: contain; background-repeat: no-repeat; background-position: center;
         }
 
-        /* Ajuste de huecos según tu imagen */
-        .hueco { position: absolute; width: 100px; height: 60px; border: 1px dashed rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; }
-        #zona-orca { top: 75px; left: 250px; }
-        #zona-foca { top: 145px; left: 250px; }
-        #zona-pinguinos { top: 215px; left: 250px; }
-        #zona-peces { top: 285px; left: 250px; }
-        #zona-krill { top: 355px; left: 250px; }
-        #zona-alga { top: 425px; left: 250px; }
+        .contenedor-animal { position: relative; width: 85px; height: 65px; cursor: grab; }
+        .btn-audio {
+            position: absolute; top: -8px; left: -8px; z-index: 10;
+            background: white; border: 1px solid #ccc; border-radius: 50%;
+            width: 28px; height: 28px; cursor: pointer; font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
 
-        /* Zona de piezas inferior */
+        .hueco { 
+            position: absolute; width: 18%; height: 14%; 
+            border: 1px dashed rgba(0,0,0,0.1); 
+            display: flex; align-items: center; justify-content: center; border-radius: 5px; 
+        }
+
+        #zona-orca { top: 15%; left: 41%; }
+        #zona-foca { top: 29%; left: 32%; width: 37%; }
+        #zona-pinguinos { top: 43%; left: 25%; width: 50%; }
+        #zona-peces { top: 57%; left: 18%; width: 64%;}
+        #zona-krill { top: 71%; left: 11%; width: 77%; height: 12% ;}
+        #zona-alga { top: 83%; left: 5%; width: 90%; height: 12% ; }
+
         .zona-piezas { 
-            width: 540px; min-height: 63px; margin: 20px auto; 
-            border: 2px dashed #999; border-radius: 15px; 
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 15px; background: white;
+            width: 95%; max-width: 600px; min-height: 100px; 
+            margin: 20px auto; border: 2px dashed #999; border-radius: 15px; 
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 15px; padding: 15px; background: white;
         }
-        .animal { width: 80px; height: 60px; cursor: grab; object-fit: cover; border-radius: 5px; }
 
-        /* Modal de Ayuda */
-        #modal-ayuda { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.8); z-index: 1000; cursor: pointer;
-            align-items: center; justify-content: center;
+        .animal { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; pointer-events: none; }
+
+        .input-nombre { 
+            background: transparent; border: none; outline: none; text-align: center; 
+            width: 100%; color: #000; font-family: 'Comic Sans MS', sans-serif; 
+            font-size: 14px; font-weight: bold; 
         }
-        #modal-ayuda img { max-width: 80%; border: 5px solid white; border-radius: 10px; }
+        .input-nombre::placeholder { color: #000 !important; font-weight: bold; opacity: 1; }
 
-        .acierto { border: 3px solid #4CAF50 !important; }
+        #modal-ayuda { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+        #modal-ayuda img { max-width: 90%; border: 4px solid white; border-radius: 10px; }
+
+        .acierto { border: 3px solid #4CAF50 !important; background-color: rgba(76, 175, 80, 0.1); }
         .error-anim { animation: shake 0.3s; border: 2px solid red; }
-        @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
-        .input-nombre::placeholder { color: #000000; opacity: 1; font-style: italic; font-weight: bold; }
-        .input-nombre { width: 80%; font-size: 12px; text-align: center; background: transparent; border: none; outline: none; color: #000000; font-style: italic; font-weight: bold; }
+        @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-6px);} 75% {transform: translateX(6px);} }
     </style>
 </head>
 <body>
 
     <div id="pantalla-inicio">
-        <h1>🧊 ¡Misión Antarctida!</h1>
-        <p>Reconstruye la pirámide trófica antes de que se hunda su ecosistema.</p>
-
+        <h1>🧊 ¡Misión Antártida!</h1>
+        <p>Reconstruye la pirámide trófica para salvar el ecosistema.</p>
         <button class="boton btn-1" onclick="comenzar(1)">Nivel 1</button>
         <button class="boton btn-2" onclick="comenzar(2)">Nivel 2</button>
         <button class="boton btn-3" onclick="comenzar(3)">Nivel 3</button>
     </div>
 
     <div id="juego">
-        <div>
-            <button onclick="location.reload()">🏠 Inicio</button>
-            <button onclick="abrirAyuda()">💡 Ayuda</button>
+        <div class="controles-superiores">
+            <button class="btn-control" onclick="location.reload()">🏠 Inicio</button>
+            <button class="btn-control" onclick="abrirAyuda()">💡 Ayuda</button>
         </div>
         <div class="area-piramide" id="piramide">
             <div class="hueco" id="zona-orca" ondrop="drop(event)" ondragover="allowDrop(event)" data-target="orca"></div>
@@ -79,126 +94,131 @@
     </div>
 
     <div id="modal-ayuda" onclick="this.style.display='none'">
-        <img src="img/imagen_ayuda.jpeg" alt="Ayuda">
+        <img src="img/imagen_ayuda.jpeg">
     </div>
 
     <script>
+        // 1. Configuración de Audio General
+        let audioGeneral = new Audio('audios/General.mpeg'); 
+        audioGeneral.loop = true;
+        audioGeneral.volume = 0.4; 
+
         const animales = ['orca', 'foca', 'pinguinos', 'peces', 'krill', 'alga'];
         let nivelActual = 1;
-        let piezaTocada = null; // Variable para el movimiento táctil
+        let piezaTocada = null; 
+        let intervaloConfeti = null; 
+        let audioVictoria = null;    
 
         function comenzar(n) {
             nivelActual = n;
             document.getElementById('pantalla-inicio').style.display = 'none';
             document.getElementById('juego').style.display = 'block';
+            
+            // Iniciar música de fondo
+            audioGeneral.play().catch(() => console.log("Clic requerido para audio"));
             cargarJuego();
         }
 
         function cargarJuego() {
             const piezasDiv = document.getElementById('piezas');
             piezasDiv.innerHTML = "";
+            if (nivelActual === 3) { animales.forEach(id => configurarNivel3(id)); }
+
             const mezcla = [...animales].sort(() => Math.random() - 0.5);
-
             mezcla.forEach(id => {
+                const contenedor = document.createElement('div');
+                contenedor.className = 'contenedor-animal';
+                contenedor.id = "cont-" + id;
+
+                const btn = document.createElement('button');
+                btn.className = 'btn-audio';
+                btn.innerHTML = '🔊';
+                btn.onclick = (e) => { e.stopPropagation(); reproducirAnimalEspecial(id); };
+
                 const img = document.createElement('img');
-                img.id = id;
                 img.className = 'animal';
-                
-                if (nivelActual === 2) {
-                    img.src = `img/imagen_${id}_borrosa.jpeg`;
-                } else {
-                    img.src = `img/imagen_${id}.jpeg`;
+                img.src = (nivelActual === 2) ? `img/imagen_${id}_borrosa.jpeg` : `img/imagen_${id}.jpeg`;
+
+                if (nivelActual !== 3) {
+                    contenedor.draggable = true;
+                    contenedor.ondragstart = (e) => e.dataTransfer.setData("text", contenedor.id);
+                    contenedor.addEventListener('touchstart', touchStart, {passive: false});
+                    contenedor.addEventListener('touchmove', touchMove, {passive: false});
+                    contenedor.addEventListener('touchend', touchEnd, {passive: false});
                 }
 
-                if (nivelActual === 3) {
-                    configurarNivel3(id);
-                } else {
-                    img.draggable = true;
-                    img.ondragstart = drag;
-                    
-                    // EVENTOS TÁCTILES PARA MÓVIL
-                    img.addEventListener('touchstart', touchStart, {passive: false});
-                    img.addEventListener('touchmove', touchMove, {passive: false});
-                    img.addEventListener('touchend', touchEnd, {passive: false});
-                }
-                
-                img.onclick = () => reproducir(id);
-                piezasDiv.appendChild(img);
+                contenedor.appendChild(btn);
+                contenedor.appendChild(img);
+                piezasDiv.appendChild(contenedor);
             });
         }
 
-        // --- LÓGICA PARA MÓVIL (TOUCH) ---
+        // Reproducción de animal con pausa de música general
+        function reproducirAnimalEspecial(nombre) {
+            audioGeneral.pause();
+            let nombreFormateado = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+            let sonido = new Audio(`audios/${nombreFormateado}.ogg`);
 
+            let finalizar = () => { if (!audioVictoria || audioVictoria.paused) audioGeneral.play(); };
+
+            sonido.play().catch(() => {
+                sonido = new Audio(`audios/${nombreFormateado}.mpeg`);
+                sonido.play().catch(() => finalizar());
+            });
+            sonido.onended = finalizar;
+        }
+
+        // Funciones de movimiento
         function touchStart(e) {
-            piezaTocada = e.target;
+            piezaTocada = e.currentTarget;
             piezaTocada.style.position = "fixed";
             piezaTocada.style.zIndex = "1000";
-            piezaTocada.style.pointerEvents = "none"; // Permite detectar lo que hay debajo (el hueco)
+            piezaTocada.style.pointerEvents = "none";
         }
 
         function touchMove(e) {
             if (!piezaTocada) return;
-            e.preventDefault(); // Evita el scroll mientras mueves al animal
+            e.preventDefault();
             let touch = e.touches[0];
-            // Centramos la imagen bajo el dedo
             piezaTocada.style.left = (touch.clientX - 40) + "px";
             piezaTocada.style.top = (touch.clientY - 30) + "px";
         }
 
         function touchEnd(e) {
             if (!piezaTocada) return;
-            let el = piezaTocada;
-            piezaTocada = null;
-            
-            // Detectamos qué elemento hay en la posición donde soltamos
+            let cont = piezaTocada; piezaTocada = null;
             let touch = e.changedTouches[0];
             let debajo = document.elementFromPoint(touch.clientX, touch.clientY);
             let destino = debajo ? debajo.closest('.hueco') : null;
-
-            validarColocacion(el, destino);
-            
-            // Devolvemos el estilo para que no flote
-            el.style.position = "static";
-            el.style.pointerEvents = "auto";
-        }
-
-        // --- LÓGICA PARA PC (MOUSE) ---
-
-        function drag(ev) {
-            ev.dataTransfer.setData("text", ev.target.id);
-        }
-
-        function drop(ev) {
-            ev.preventDefault();
-            const id = ev.dataTransfer.getData("text");
-            const pieza = document.getElementById(id);
-            const destino = ev.target.closest('.hueco');
-            validarColocacion(pieza, destino);
+            validarColocacion(cont, cont.id.replace("cont-", ""), destino);
+            cont.style.position = "static"; cont.style.pointerEvents = "auto";
         }
 
         function allowDrop(ev) { ev.preventDefault(); }
-
-        // --- FUNCIÓN UNIFICADA DE VALIDACIÓN ---
-
-        function validarColocacion(pieza, destino) {
-            if (destino && destino.getAttribute('data-target') === pieza.id) {
-                destino.appendChild(pieza);
-                destino.classList.add('acierto');
-                if (nivelActual === 2) pieza.src = `img/imagen_${pieza.id}.jpeg`;
-                pieza.style.width = "100%"; 
-                pieza.style.height = "100%";
-                reproducir('acierto');
-                setTimeout(() => reproducir(pieza.id), 500);
-            } else {
-                // Si falla o se suelta fuera, vuelve a la caja de piezas
-                document.getElementById('piezas').appendChild(pieza);
-                pieza.classList.add('error-anim');
-                reproducir('error');
-                setTimeout(() => pieza.classList.remove('error-anim'), 500);
-            }
+        function drop(ev) {
+            ev.preventDefault();
+            const contId = ev.dataTransfer.getData("text");
+            const cont = document.getElementById(contId);
+            validarColocacion(cont, contId.replace("cont-", ""), ev.target.closest('.hueco'));
         }
 
-        // --- NIVEL 3 Y AYUDA ---
+        function validarColocacion(contenedor, idAnimal, destino) {
+           if (destino && destino.getAttribute('data-target') === idAnimal) {
+                destino.appendChild(contenedor);
+                destino.classList.add('acierto');
+                const img = contenedor.querySelector('img');
+                img.src = `img/imagen_${idAnimal}.jpeg`;
+                contenedor.style.width = "80px"; 
+                contenedor.style.height = "60px";
+                reproducir('acierto');
+                setTimeout(() => { reproducir(idAnimal); comprobarVictoria(); }, 500);
+            } else {
+                document.getElementById('piezas').appendChild(contenedor);
+                contenedor.classList.add('error-anim');
+                reproducir('error');
+                setTimeout(() => contenedor.classList.remove('error-anim'), 500);
+            }
+        }
 
         function configurarNivel3(id) {
             const zona = document.getElementById(`zona-${id}`);
@@ -208,14 +228,20 @@
         function validarNombre(input, id) {
             let textoUsuario = input.value.toLowerCase().trim();
             let textoLimpio = textoUsuario.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            let palabraClave = (id === 'pinguinos') ? 'pinguin' : id;
+            let esCorrecto = false;
 
-            if (textoLimpio.includes(palabraClave)) {
-                input.parentElement.classList.add('acierto');
-                input.disabled = true;
-                input.style.color = "#2e7d32";
+            if (id === 'pinguinos') { esCorrecto = textoLimpio.includes('pinguin'); } 
+            else if (id === 'peces') { esCorrecto = textoLimpio.includes('pez') || textoLimpio.includes('peces'); } 
+            else { esCorrecto = textoLimpio.includes(id); }
+
+            if (esCorrecto) {
+                const zona = input.parentElement;
+                zona.classList.add('acierto');
+                zona.innerHTML = `<img src="img/imagen_${id}.jpeg" style="width:80px; height:60px; border-radius:5px;">`;
+                const piezaAbajo = document.getElementById("cont-" + id);
+                if (piezaAbajo) piezaAbajo.remove();
                 reproducir('acierto');
-                reproducir(id); 
+                setTimeout(() => { reproducir(id); comprobarVictoria(); }, 500);
             } else {
                 input.classList.add('error-anim');
                 reproducir('error');
@@ -223,6 +249,34 @@
             }
         }
 
+        // Lógica de victoria con pausa definitiva de música general
+        function comprobarVictoria() {
+            if (document.querySelectorAll('.acierto').length === 6) {
+                audioGeneral.pause(); // Pausa música de fondo para la victoria
+                intervaloConfeti = setInterval(() => {
+                    confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 }, colors: ['#2196F3', '#4CAF50', '#FF9800', '#ffffff'] });
+                }, 500);
+                audioVictoria = new Audio('audios/Victoria.mpeg');
+                audioVictoria.loop = true;
+                audioVictoria.play().catch(() => {});
+                setTimeout(() => {
+                    document.addEventListener('click', () => {
+                        clearInterval(intervaloConfeti); intervaloConfeti = null;
+                        if(audioVictoria) { audioVictoria.pause(); audioVictoria.currentTime = 0; }
+                    }, { once: true });
+                }, 1000);
+            }
+        }
+
         function abrirAyuda() { document.getElementById('modal-ayuda').style.display = 'flex'; }
-        function reproducir(s) { new Audio(`audio/${s}.mp3`).play().catch(() => {}); }
+        
+        // Función de reproducción de efectos con pausa/reanudación
+        function reproducir(s) { 
+            audioGeneral.pause();
+            let sonido = new Audio(`audios/${s}.mp3`);
+            sonido.play().catch(() => { if (!audioVictoria || audioVictoria.paused) audioGeneral.play(); });
+            sonido.onended = () => { if (!audioVictoria || audioVictoria.paused) audioGeneral.play(); };
+        }
     </script>
+</body>
+</html>
