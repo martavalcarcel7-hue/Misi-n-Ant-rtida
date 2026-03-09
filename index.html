@@ -3,10 +3,10 @@
 <head>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Misión Antártida</title>
     <style>
-        body { font-family: 'Comic Sans MS', sans-serif; background-color: #e0f7ff; text-align: center; margin: 0; padding: 10px; }
+        body { font-family: 'Comic Sans MS', sans-serif; background-color: #e0f7ff; text-align: center; margin: 0; padding: 10px; touch-action: manipulation; }
         #pantalla-inicio { padding: 50px 20px; }
         .boton { padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; border-radius: 12px; border: none; color: white; width: 80%; max-width: 300px; }
         .btn-1 { background: #4CAF50; } .btn-2 { background: #FF9800; } .btn-3 { background: #2196F3; }
@@ -21,13 +21,14 @@
             background-size: contain; background-repeat: no-repeat; background-position: center;
         }
 
-        .contenedor-animal { position: relative; width: 85px; height: 65px; cursor: grab; }
-        .btn-audio {
-            position: absolute; top: -8px; left: -8px; z-index: 10;
-            background: white; border: 1px solid #ccc; border-radius: 50%;
-            width: 28px; height: 28px; cursor: pointer; font-size: 14px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        .contenedor-animal { position: relative; width: 85px; height: 65px; z-index: 5; }
+        
+        /* Botón de escucha debajo de las piezas */
+        #zona-escucha {
+            width: 95%; max-width: 600px; margin: 10px auto;
+            padding: 15px; background: #2196F3; color: white;
+            border: 3px dashed #ffffff; border-radius: 15px;
+            font-weight: bold; font-size: 18px; cursor: default;
         }
 
         .hueco { 
@@ -36,7 +37,7 @@
             display: flex; align-items: center; justify-content: center; border-radius: 5px; 
         }
 
-        #zona-orca { top: 15%; left: 41%; }
+        #zona-orca { top: 15%; left: 41%; width: 18%; }
         #zona-foca { top: 29%; left: 32%; width: 37%; }
         #zona-pinguinos { top: 43%; left: 25%; width: 50%; }
         #zona-peces { top: 57%; left: 18%; width: 64%;}
@@ -45,18 +46,13 @@
 
         .zona-piezas { 
             width: 95%; max-width: 600px; min-height: 100px; 
-            margin: 20px auto; border: 2px dashed #999; border-radius: 15px; 
+            margin: 20px auto 5px auto; border: 2px dashed #999; border-radius: 15px; 
             display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
             gap: 15px; padding: 15px; background: white;
         }
 
         .animal { width: 100%; height: 100%; object-fit: cover; border-radius: 5px; pointer-events: none; }
-
-        .input-nombre { 
-            background: transparent; border: none; outline: none; text-align: center; 
-            width: 100%; color: #000; font-family: 'Comic Sans MS', sans-serif; 
-            font-size: 14px; font-weight: bold; 
-        }
+        .input-nombre { background: transparent; border: none; outline: none; text-align: center; width: 100%; color: #000; font-weight: bold; font-size: 14px; }
         .input-nombre::placeholder { color: #000 !important; font-weight: bold; opacity: 1; }
 
         #modal-ayuda { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
@@ -91,14 +87,15 @@
             <div class="hueco" id="zona-alga" ondrop="drop(event)" ondragover="allowDrop(event)" data-target="alga"></div>
         </div>
         <div class="zona-piezas" id="piezas"></div>
+        
+        <div id="zona-escucha" ondrop="dropAudio(event)" ondragover="allowDrop(event)">
+            🔊 Arrastra aquí para escuchar
+        </div>
     </div>
 
-    <div id="modal-ayuda" onclick="this.style.display='none'">
-        <img src="img/imagen_ayuda.jpeg">
-    </div>
+    <div id="modal-ayuda" onclick="this.style.display='none'"><img src="img/imagen_ayuda.jpeg"></div>
 
     <script>
-        // 1. Configuración de Audio General
         let audioGeneral = new Audio('audios/General.mpeg'); 
         audioGeneral.loop = true;
         audioGeneral.volume = 0.4; 
@@ -106,23 +103,27 @@
         const animales = ['orca', 'foca', 'pinguinos', 'peces', 'krill', 'alga'];
         let nivelActual = 1;
         let piezaTocada = null; 
-        let intervaloConfeti = null; 
         let audioVictoria = null;    
 
         function comenzar(n) {
             nivelActual = n;
             document.getElementById('pantalla-inicio').style.display = 'none';
             document.getElementById('juego').style.display = 'block';
-            
-            // Iniciar música de fondo
-            audioGeneral.play().catch(() => console.log("Clic requerido para audio"));
+            audioGeneral.play().catch(() => {
+                document.addEventListener('touchstart', () => audioGeneral.play(), {once: true});
+            });
             cargarJuego();
         }
 
         function cargarJuego() {
             const piezasDiv = document.getElementById('piezas');
             piezasDiv.innerHTML = "";
-            if (nivelActual === 3) { animales.forEach(id => configurarNivel3(id)); }
+            const huecos = document.querySelectorAll('.hueco');
+            huecos.forEach(h => {
+                h.innerHTML = "";
+                h.classList.remove('acierto');
+                if (nivelActual === 3) configurarNivel3(h);
+            });
 
             const mezcla = [...animales].sort(() => Math.random() - 0.5);
             mezcla.forEach(id => {
@@ -130,45 +131,58 @@
                 contenedor.className = 'contenedor-animal';
                 contenedor.id = "cont-" + id;
 
-                const btn = document.createElement('button');
-                btn.className = 'btn-audio';
-                btn.innerHTML = '🔊';
-                btn.onclick = (e) => { e.stopPropagation(); reproducirAnimalEspecial(id); };
-
                 const img = document.createElement('img');
                 img.className = 'animal';
-                img.src = (nivelActual === 2) ? `img/imagen_${id}_borrosa.jpeg` : `img/imagen_${id}.jpeg`;
+                img.src = (nivelActual >= 2) ? `img/imagen_${id}_borrosa.jpeg` : `img/imagen_${id}.jpeg`;
 
-                if (nivelActual !== 3) {
-                    contenedor.draggable = true;
-                    contenedor.ondragstart = (e) => e.dataTransfer.setData("text", contenedor.id);
-                    contenedor.addEventListener('touchstart', touchStart, {passive: false});
-                    contenedor.addEventListener('touchmove', touchMove, {passive: false});
-                    contenedor.addEventListener('touchend', touchEnd, {passive: false});
-                }
+                // PC y Móvil: Arrastre habilitado para todos los niveles para poder escuchar
+                contenedor.draggable = true;
+                contenedor.ondragstart = (e) => e.dataTransfer.setData("text", contenedor.id);
+                
+                contenedor.addEventListener('touchstart', touchStart, {passive: false});
+                contenedor.addEventListener('touchmove', touchMove, {passive: false});
+                contenedor.addEventListener('touchend', touchEnd, {passive: false});
 
-                contenedor.appendChild(btn);
                 contenedor.appendChild(img);
                 piezasDiv.appendChild(contenedor);
             });
         }
 
-        // Reproducción de animal con pausa de música general
         function reproducirAnimalEspecial(nombre) {
-            audioGeneral.pause();
-            let nombreFormateado = nombre.charAt(0).toUpperCase() + nombre.slice(1);
-            let sonido = new Audio(`audios/${nombreFormateado}.ogg`);
+            if (!audioGeneral.paused) audioGeneral.pause();
+            let n = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+            let sonido = new Audio(`audios/${n}.ogg`);
+            let finalizar = () => { if (!audioVictoria || audioVictoria.paused) audioGeneral.play().catch(() => {}); };
 
-            let finalizar = () => { if (!audioVictoria || audioVictoria.paused) audioGeneral.play(); };
-
-            sonido.play().catch(() => {
-                sonido = new Audio(`audios/${nombreFormateado}.mpeg`);
-                sonido.play().catch(() => finalizar());
+            sonido.play().then(() => audioGeneral.pause()).catch(() => {
+                sonido = new Audio(`audios/${n}.mpeg`);
+                sonido.play().then(() => audioGeneral.pause()).catch(() => finalizar());
             });
             sonido.onended = finalizar;
         }
 
-        // Funciones de movimiento
+        // LÓGICA PC
+        function allowDrop(ev) { ev.preventDefault(); }
+        
+        function drop(ev) {
+            ev.preventDefault();
+            const contId = ev.dataTransfer.getData("text");
+            const cont = document.getElementById(contId);
+            const destino = ev.target.closest('.hueco');
+            if (destino) {
+                validarColocacion(cont, contId.replace("cont-", ""), destino);
+            }
+        }
+
+        // Función específica para soltar en el botón de audio
+        function dropAudio(ev) {
+            ev.preventDefault();
+            const contId = ev.dataTransfer.getData("text");
+            const idAnimal = contId.replace("cont-", "");
+            reproducirAnimalEspecial(idAnimal);
+        }
+
+        // LÓGICA MÓVIL
         function touchStart(e) {
             piezaTocada = e.currentTarget;
             piezaTocada.style.position = "fixed";
@@ -188,80 +202,76 @@
             if (!piezaTocada) return;
             let cont = piezaTocada; piezaTocada = null;
             let touch = e.changedTouches[0];
+            cont.style.display = "none";
             let debajo = document.elementFromPoint(touch.clientX, touch.clientY);
-            let destino = debajo ? debajo.closest('.hueco') : null;
-            validarColocacion(cont, cont.id.replace("cont-", ""), destino);
-            cont.style.position = "static"; cont.style.pointerEvents = "auto";
+            cont.style.display = "block";
+            
+            let destinoHueco = debajo ? debajo.closest('.hueco') : null;
+            let destinoAudio = debajo ? debajo.closest('#zona-escucha') : null;
+
+            if (destinoAudio) {
+                reproducirAnimalEspecial(cont.id.replace("cont-", ""));
+            } else {
+                validarColocacion(cont, cont.id.replace("cont-", ""), destinoHueco);
+            }
+            
+            cont.style.position = "static"; 
+            cont.style.pointerEvents = "auto";
         }
 
-        function allowDrop(ev) { ev.preventDefault(); }
-        function drop(ev) {
-            ev.preventDefault();
-            const contId = ev.dataTransfer.getData("text");
-            const cont = document.getElementById(contId);
-            validarColocacion(cont, contId.replace("cont-", ""), ev.target.closest('.hueco'));
-        }
-
-        function validarColocacion(contenedor, idAnimal, destino) {
-           if (destino && destino.getAttribute('data-target') === idAnimal) {
+        function validarColocacion(contenedor, id, destino) {
+            if (nivelActual === 3) return; // En nivel 3 se escribe, no se arrastra a la pirámide
+            
+            if (destino && destino.getAttribute('data-target') === id) {
                 destino.appendChild(contenedor);
                 destino.classList.add('acierto');
-                const img = contenedor.querySelector('img');
-                img.src = `img/imagen_${idAnimal}.jpeg`;
-                contenedor.style.width = "80px"; 
-                contenedor.style.height = "60px";
-                reproducir('acierto');
-                setTimeout(() => { reproducir(idAnimal); comprobarVictoria(); }, 500);
+                contenedor.querySelector('img').src = `img/imagen_${id}.jpeg`;
+                contenedor.style.width = "80px"; contenedor.style.height = "60px";
+                reproducirEfecto('acierto');
+                setTimeout(() => { reproducirAnimalEspecial(id); comprobarVictoria(); }, 500);
             } else {
                 document.getElementById('piezas').appendChild(contenedor);
                 contenedor.classList.add('error-anim');
-                reproducir('error');
+                reproducirEfecto('error');
                 setTimeout(() => contenedor.classList.remove('error-anim'), 500);
             }
         }
 
-        function configurarNivel3(id) {
-            const zona = document.getElementById(`zona-${id}`);
+        function configurarNivel3(zona) {
+            let id = zona.getAttribute('data-target');
             zona.innerHTML = `<input type="text" class="input-nombre" placeholder="Nombre..." onchange="validarNombre(this, '${id}')">`;
         }
 
         function validarNombre(input, id) {
-            let textoUsuario = input.value.toLowerCase().trim();
-            let textoLimpio = textoUsuario.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            let esCorrecto = false;
-
-            if (id === 'pinguinos') { esCorrecto = textoLimpio.includes('pinguin'); } 
-            else if (id === 'peces') { esCorrecto = textoLimpio.includes('pez') || textoLimpio.includes('peces'); } 
-            else { esCorrecto = textoLimpio.includes(id); }
-
-            if (esCorrecto) {
-                const zona = input.parentElement;
+            let txt = input.value.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            let ok = (id === 'peces') ? (txt.includes('pez') || txt.includes('peces')) : (id === 'pinguinos' ? txt.includes('pinguin') : txt.includes(id));
+            if (ok) {
+                let zona = input.parentElement;
                 zona.classList.add('acierto');
-                zona.innerHTML = `<img src="img/imagen_${id}.jpeg" style="width:80px; height:60px; border-radius:5px;">`;
-                const piezaAbajo = document.getElementById("cont-" + id);
-                if (piezaAbajo) piezaAbajo.remove();
-                reproducir('acierto');
-                setTimeout(() => { reproducir(id); comprobarVictoria(); }, 500);
+                zona.innerHTML = `<img src="img/imagen_${id}.jpeg" style="width:80px;height:60px;border-radius:5px;">`;
+                let p = document.getElementById("cont-" + id);
+                if (p) p.remove();
+                reproducirEfecto('acierto');
+                setTimeout(() => { reproducirAnimalEspecial(id); comprobarVictoria(); }, 500);
             } else {
                 input.classList.add('error-anim');
-                reproducir('error');
+                reproducirEfecto('error');
                 setTimeout(() => { input.value = ""; input.classList.remove('error-anim'); }, 500);
             }
         }
 
-        // Lógica de victoria con pausa definitiva de música general
         function comprobarVictoria() {
             if (document.querySelectorAll('.acierto').length === 6) {
-                audioGeneral.pause(); // Pausa música de fondo para la victoria
-                intervaloConfeti = setInterval(() => {
-                    confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 }, colors: ['#2196F3', '#4CAF50', '#FF9800', '#ffffff'] });
-                }, 500);
+                audioGeneral.pause();
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                 audioVictoria = new Audio('audios/Victoria.mpeg');
                 audioVictoria.loop = true;
                 audioVictoria.play().catch(() => {});
                 setTimeout(() => {
+                    document.addEventListener('touchstart', () => {
+                        if(audioVictoria) { audioVictoria.pause(); audioVictoria.currentTime = 0; }
+                    }, { once: true });
                     document.addEventListener('click', () => {
-                        clearInterval(intervaloConfeti); intervaloConfeti = null;
                         if(audioVictoria) { audioVictoria.pause(); audioVictoria.currentTime = 0; }
                     }, { once: true });
                 }, 1000);
@@ -270,11 +280,10 @@
 
         function abrirAyuda() { document.getElementById('modal-ayuda').style.display = 'flex'; }
         
-        // Función de reproducción de efectos con pausa/reanudación
-        function reproducir(s) { 
-            audioGeneral.pause();
+        function reproducirEfecto(s) {
+            if (!audioGeneral.paused) audioGeneral.pause();
             let sonido = new Audio(`audios/${s}.mp3`);
-            sonido.play().catch(() => { if (!audioVictoria || audioVictoria.paused) audioGeneral.play(); });
+            sonido.play().then(() => audioGeneral.pause()).catch(() => { if (!audioVictoria || audioVictoria.paused) audioGeneral.play(); });
             sonido.onended = () => { if (!audioVictoria || audioVictoria.paused) audioGeneral.play(); };
         }
     </script>
